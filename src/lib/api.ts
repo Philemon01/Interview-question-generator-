@@ -1,9 +1,12 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 
-// Initialize the Gemini API client
-// The key is fetched from process.env.GEMINI_API_KEY
-// In this environment, GEMINI_API_KEY is injected at runtime.
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+/**
+ * Initialize the Gemini AI client using the modern @google/genai SDK.
+ * The API key is injected by the platform from environment variables.
+ */
+const ai = new GoogleGenAI({ 
+  apiKey: process.env.GEMINI_API_KEY || '' 
+});
 
 /**
  * Calls Gemini to generate 3 thoughtful interview questions.
@@ -11,42 +14,63 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
  * @returns {Promise<string[]>} - An array of 3 questions.
  */
 export async function getInterviewQuestions(jobTitle: string): Promise<string[]> {
-  if (!process.env.GEMINI_API_KEY) {
-    throw new Error("Missing API Key. Please configure GEMINI_API_KEY in your environment.");
+  const apiKey = process.env.GEMINI_API_KEY;
+  
+  if (!apiKey) {
+    throw new Error("Missing API Key. Please check the Secrets panel in Settings.");
   }
 
-  // Model selection (Gemini 1.5 Flash is ideal for fast, cost-effective text tasks)
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  // Model selection (gemini-3-flash-preview is the recommended default for basic text tasks)
+  const modelName = "gemini-3-flash-preview";
 
-  // System instructions + Prompt
-  const prompt = `
-    You are an expert HR Manager. 
-    Generate 3 highly specific, behavioral interview questions for the job title: "${jobTitle}". 
-    
-    Constraints:
-    - Return exactly 3 questions.
-    - Format as a numbered list (1.. 2.. 3..).
-    - Do not include any other text or PII.
-  `.trim();
+  const prompt = `You are an expert HR Manager. Generate 3 highly specific, behavioral interview questions for the job title: "${jobTitle}". Return only the questions in a numbered list.`;
 
   try {
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
-    
+    const response = await ai.models.generateContent({
+      model: modelName,
+      contents: prompt,
+    });
+
+    const text = response.text;
+    if (!text) {
+      throw new Error("The AI service returned an empty response. Please try again.");
+    }
+
     // Parse the output: Extract text following "1. ", "2. ", etc.
     const questions = text
       .split(/\n/)
+      .map(q => q.trim())
+      .filter(q => q.length > 0 && /^\d+[\.\)]/.test(q))
       .map(q => q.replace(/^\d+[\.\)]\s*/, "").trim())
-      .filter(q => q.length > 0)
       .slice(0, 3);
 
     if (questions.length < 3) {
-      throw new Error("Received incomplete response from AI.");
+      // Fallback: If parsing failed but we have text, just return first 3 lines
+      const fallback = text
+        .split(/\n/)
+        .map(q => q.trim())
+        .filter(q => q.length > 0)
+        .slice(0, 3);
+        
+      if (fallback.length === 0) {
+        throw new Error("Received an unformatted response from AI.");
+      }
+      return fallback;
     }
 
     return questions;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini API error:", error);
-    throw new Error("The AI service is currently unavailable or returned an error. Please try again.");
+    
+    // Specific guidance for API key issues as per skill
+    if (error.message?.includes("PERMISSION_DENIED") || error.status === 403) {
+      throw new Error("API Key Permission Denied. Please ensure your Gemini API key is valid in Settings > Secrets.");
+    }
+    
+    if (error.message?.includes("API_KEY_INVALID") || error.status === 400) {
+      throw new Error("Invalid API Key found. Please check your Gemini API key in Settings > Secrets.");
+    }
+
+    throw new Error("The AI service encountered an error. Please try again in a few moments.");
   }
 }

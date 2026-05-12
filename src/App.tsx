@@ -159,7 +159,7 @@ export default function App() {
         {/* Compliance Note */}
         <footer className="mt-20 pt-8 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] uppercase tracking-widest font-bold text-slate-400">
           <div>Privacy Mode Enabled &bull; No PII Stored</div>
-          <div>Powered by Google Gemini 1.5 Flash</div>
+          <div>Powered by Google Gemini 3 Flash</div>
         </footer>
       </div>
     </div>
