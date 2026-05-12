@@ -1,211 +1,167 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import { useState, FormEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Briefcase, Send, Loader2, AlertCircle, RefreshCw, ChevronRight } from 'lucide-react';
-import { generateInterviewQuestions } from './services/gemini';
+import { Briefcase, Search, Sparkles, AlertCircle, RefreshCw, Clipboard } from 'lucide-react';
+import { getInterviewQuestions } from './lib/api';
+import { sanitizeInput } from './lib/utils';
 
 export default function App() {
-  const [jobTitle, setJobTitle] = useState('');
+  const [jobTitle, setJobTitle] = useState('Customer Success Manager');
   const [questions, setQuestions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Handle generation logic
   const handleGenerate = async (e?: FormEvent) => {
     if (e) e.preventDefault();
-    if (!jobTitle.trim()) return;
+    
+    // Security check: Sanitization
+    const sanitizedTitle = sanitizeInput(jobTitle);
+    if (!sanitizedTitle) {
+      setError("Please enter a valid job title (alphanumeric only).");
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
-    setQuestions([]);
 
     try {
-      const result = await generateInterviewQuestions(jobTitle);
+      const result = await getInterviewQuestions(sanitizedTitle);
       setQuestions(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+      setError(err instanceof Error ? err.message : "Failed to connect to the interview engine.");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-[#0f172a] font-sans selection:bg-blue-100">
-      {/* Background Decals */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
-        <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-50 rounded-full blur-3xl opacity-50" />
-        <div className="absolute top-1/2 -right-24 w-64 h-64 bg-indigo-50 rounded-full blur-3xl opacity-50" />
-      </div>
-
-      <main className="max-w-3xl mx-auto px-6 py-16 md:py-24">
-        {/* Header */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-12"
-        >
-          <div className="inline-flex items-center justify-center p-3 bg-white rounded-2xl shadow-sm border border-slate-100 mb-6 group transition-transform hover:scale-105">
-            <Briefcase className="w-8 h-8 text-blue-600 group-hover:rotate-12 transition-transform" />
+    <div className="min-h-screen bg-slate-50 text-slate-900 selection:bg-slate-200">
+      <div className="max-w-2xl mx-auto px-6 py-20">
+        
+        {/* Header - Simple & Clean */}
+        <header className="mb-12">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="bg-slate-900 p-2 rounded-lg">
+              <Clipboard className="w-5 h-5 text-white" />
+            </div>
+            <h1 className="text-xl font-bold tracking-tight">InterviewAI</h1>
           </div>
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 mb-4">
-            Interview Prep <span className="text-blue-600">AI</span>
-          </h1>
-          <p className="text-lg text-slate-600 max-w-xl mx-auto leading-relaxed">
-            Generate expert-level behavioral interview questions tailored to any role. 
-            Prepare better, land the job.
+          <p className="text-slate-500 font-medium leading-relaxed">
+            Generate role-specific behavioral questions to prepare for your next career move.
           </p>
-        </motion.div>
+        </header>
 
-        {/* Input Section */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="mb-12"
-        >
+        {/* Search Section */}
+        <section className="mb-10">
           <form onSubmit={handleGenerate} className="relative group">
+            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+              <Search className="w-5 h-5 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
+            </div>
             <input
               type="text"
               value={jobTitle}
               onChange={(e) => setJobTitle(e.target.value)}
-              placeholder="e.g. Senior Frontend Engineer"
-              disabled={isLoading}
-              className="w-full h-16 pl-6 pr-32 bg-white border border-slate-200 rounded-2xl shadow-sm focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all text-lg font-medium placeholder:text-slate-400 disabled:opacity-50 disabled:bg-slate-50"
+              placeholder="e.g. Lead Software Engineer"
+              className="w-full h-14 pl-12 pr-32 bg-white border border-slate-200 rounded-xl shadow-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 outline-none transition-all font-medium"
             />
             <button
               type="submit"
               disabled={isLoading || !jobTitle.trim()}
-              className="absolute right-2 top-2 bottom-2 px-6 bg-slate-900 text-white rounded-xl font-semibold flex items-center gap-2 hover:bg-slate-800 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 disabled:bg-slate-400 group/btn"
+              className="absolute right-2 top-2 bottom-2 px-5 bg-slate-900 text-white rounded-lg font-bold text-sm tracking-wide active:scale-95 disabled:opacity-30 disabled:scale-100 transition-all flex items-center gap-2"
             >
               {isLoading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Thinking...</span>
-                </>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
-                  <span>Generate</span>
-                  <Send className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
+                  Generate <Sparkles className="w-3.5 h-3.5" />
                 </>
               )}
             </button>
           </form>
-          {jobTitle && (
-            <p className="mt-3 text-sm text-slate-400 italic flex items-center gap-1.5 ml-1">
-              <ChevronRight className="w-4 h-4" />
-              Preparing questions for <span className="text-slate-600 font-medium">{jobTitle}</span>
-            </p>
+          {jobTitle === 'Customer Success Manager' && questions.length === 0 && (
+            <p className="mt-3 text-xs text-slate-400 uppercase tracking-widest font-bold">Default Example</p>
           )}
-        </motion.div>
+        </section>
 
-        {/* Results Section */}
-        <div className="space-y-6 min-h-[400px]">
-          <AnimatePresence mode="wait">
-            {isLoading ? (
-              <motion.div 
-                key="loading"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex flex-col items-center justify-center py-20 text-center"
-              >
-                <div className="relative">
-                  <div className="w-16 h-16 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin mb-4" />
-                  <Briefcase className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 text-blue-600 animate-pulse" />
-                </div>
-                <p className="text-slate-500 font-medium">Analyzing job requirements...</p>
-                <p className="text-xs text-slate-400 mt-1 uppercase tracking-widest font-bold">Consulting expert HR data</p>
-              </motion.div>
-            ) : error ? (
-              <motion.div 
-                key="error"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="bg-red-50 border border-red-100 rounded-2xl p-8 text-center"
-              >
-                <div className="inline-flex p-3 bg-red-100/50 rounded-full mb-4">
-                  <AlertCircle className="w-8 h-8 text-red-600" />
-                </div>
-                <h3 className="text-xl font-bold text-red-900 mb-2">Something went wrong</h3>
-                <p className="text-red-700/80 mb-6 max-w-sm mx-auto">{error}</p>
+        {/* Outcome Area */}
+        <AnimatePresence mode="wait">
+          {error && (
+            <motion.div 
+              key="error"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              className="bg-red-50 border border-red-100 rounded-xl p-5 flex gap-4 items-start"
+            >
+              <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-bold text-red-900 text-sm">System Error</h3>
+                <p className="text-red-700/80 text-sm mt-1">{error}</p>
                 <button 
                   onClick={() => handleGenerate()}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors shadow-lg shadow-red-200"
+                  className="mt-3 text-xs font-bold text-red-900 underline underline-offset-4 hover:text-red-700 transition-colors flex items-center gap-1"
                 >
-                  <RefreshCw className="w-4 h-4" />
-                  Try Again
+                  <RefreshCw className="w-3 h-3" /> Retry Generation
                 </button>
-              </motion.div>
-            ) : questions.length > 0 ? (
-              <motion.div 
-                key="results"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="space-y-4"
-              >
-                <div className="flex items-center justify-between mb-4 px-2">
-                  <h2 className="text-xl font-bold text-slate-800">Top 3 Questions</h2>
-                  <span className="text-xs font-bold px-2.5 py-1 bg-green-100 text-green-700 rounded-full uppercase tracking-tighter">AI Curated</span>
-                </div>
-                {questions.map((q, idx) => (
-                  <motion.div
-                    key={idx}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.4, delay: idx * 0.1 }}
-                    className="group bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-200 transition-all cursor-default"
-                  >
-                    <div className="flex gap-4">
-                      <div className="flex-shrink-0 w-10 h-10 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center font-bold text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 group-hover:border-blue-100 transition-colors">
-                        {idx + 1}
-                      </div>
-                      <div className="flex-1 pt-1">
-                        <p className="text-lg text-slate-700 font-medium leading-relaxed group-hover:text-slate-900 transition-colors">
-                          {q}
-                        </p>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-                
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.6 }}
-                  className="text-center pt-8"
-                >
-                  <p className="text-sm text-slate-400">
-                    Questions generated using <span className="font-semibold text-slate-500">Gemini 3 Flash</span>.
-                  </p>
-                </motion.div>
-              </motion.div>
-            ) : (
-              <motion.div 
-                key="empty"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="flex flex-col items-center justify-center py-20 text-center opacity-40 grayscale hover:opacity-100 transition-all hover:grayscale-0"
-              >
-                <div className="w-20 h-20 bg-slate-200 rounded-3xl mb-6 flex items-center justify-center rotate-3 scale-90 group">
-                  <Briefcase className="w-10 h-10 text-slate-400" />
-                </div>
-                <p className="text-slate-500 font-medium italic">Type a job title above to begin your preparation.</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </main>
+              </div>
+            </motion.div>
+          )}
 
-      {/* Footer */}
-      <footer className="max-w-3xl mx-auto px-6 py-12 border-t border-slate-100 text-center">
-        <p className="text-slate-400 text-sm font-medium">
-          &copy; {new Date().getFullYear()} Interview Prep AI &bull; Built for HR Excellence
-        </p>
-      </footer>
+          {isLoading ? (
+            <motion.div 
+              key="loading"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="space-y-4"
+            >
+              {[1, 2, 3].map(i => (
+                <div key={i} className="h-24 bg-white border border-slate-100 rounded-xl animate-pulse" />
+              ))}
+            </motion.div>
+          ) : questions.length > 0 ? (
+            <motion.div 
+              key="results"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-4"
+            >
+              {questions.map((q, idx) => (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, x: -5 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.1 }}
+                  className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm hover:border-slate-300 hover:shadow-md transition-all group"
+                >
+                  <div className="flex gap-4">
+                    <span className="flex-shrink-0 text-slate-300 font-mono font-bold pt-1">0{idx + 1}</span>
+                    <p className="text-slate-700 leading-relaxed font-medium group-hover:text-slate-900">
+                      {q}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+          ) : (
+            <motion.div 
+              key="empty"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+              className="flex flex-col items-center justify-center py-24 text-slate-300 border-2 border-dashed border-slate-200 rounded-3xl"
+            >
+              <Briefcase className="w-12 h-12 mb-4" />
+              <p className="font-bold text-sm tracking-widest uppercase">Start your screen prep</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Compliance Note */}
+        <footer className="mt-20 pt-8 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] uppercase tracking-widest font-bold text-slate-400">
+          <div>Privacy Mode Enabled &bull; No PII Stored</div>
+          <div>Powered by Google Gemini 1.5 Flash</div>
+        </footer>
+      </div>
     </div>
   );
 }

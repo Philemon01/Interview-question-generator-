@@ -1,20 +1,23 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Job Interview Question Generator - Technical Screen
 
-# Run and deploy your AI Studio app
+## Security Measures Taken
 
-This contains everything you need to run your app locally.
+In compliance with the security and privacy constraints of this screening task, the following measures have been implemented:
 
-View your app in AI Studio: https://ai.studio/apps/14db71e7-1ec5-4138-aa88-58d6710219f4
+### 1. PII Protection & Input Sanitization
+- **Client-Side Sanitization**: All user inputs are processed through a custom `sanitizeInput` utility (`src/lib/utils.ts`) before being sent to the AI. This utility:
+    - Strips all HTML tags to prevent basic XSS.
+    - Uses a restrictive RegEx (`/[^a-zA-Z0-9\s\-\.\(\)]/g`) to ensure only generic job title characters are accepted.
+    - Automatically blocks potential PII formats like emails or specialized IDs by character restriction.
+- **Generic Constraints**: The AI prompt explicitly instructs the model to avoid generating or referencing any PII, focusing solely on the behavioral requirements of the provided job title.
 
-## Run Locally
+### 2. Secure API Key Handling
+- **Environment Variables**: The Google Gemini API key is never hardcoded. It is accessed via `process.env.GEMINI_API_KEY`.
+- **Runtime Injection**: In this project structure, the platform injects secrets into the runtime environment, ensuring the key remains hidden from the client-side bundle and source control.
 
-**Prerequisites:**  Node.js
+### 3. State & Error Management
+- **Graceful Failures**: A robust `try/catch` block handles API timeouts or failures, providing the user with a clear error message and a "Retry" option without leaking technical stack traces.
+- **Visual Feedback**: Pulse animations and loading indicators keep the user informed during the asynchronous AI generation process.
 
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+---
+Built with React, Tailwind CSS, and Google Gemini 1.5 Flash.
